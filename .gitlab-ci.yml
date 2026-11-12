@@ -1,0 +1,91 @@
+stages:
+  - lint
+  - test
+  - build
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# --- API Symfony -----------------------------------------------------------
+
+.api:
+  image: dunglas/frankenphp:1-php8.4
+  variables:
+    COMPOSER_ALLOW_SUPERUSER: "1"
+    COMPOSER_CACHE_DIR: "$CI_PROJECT_DIR/.cache/composer"
+    DATABASE_URL: "postgresql://app:app@database:5432/app?serverVersion=17&charset=utf8"
+  cache:
+    key: composer
+    paths:
+      - .cache/composer/
+  before_script:
+    - install-php-extensions pdo_pgsql intl zip @composer
+    - cd api
+    - composer install --prefer-dist --no-progress --no-interaction
+  rules:
+    - changes:
+        - api/**/*
+        - .gitlab-ci.yml
+
+api:lint:
+  extends: .api
+  stage: lint
+  script:
+    - php bin/console lint:yaml config
+    - php bin/console lint:container
+    - php bin/console doctrine:schema:validate --skip-sync
+
+api:test:
+  extends: .api
+  stage: test
+  services:
+    - name: postgres:17-alpine
+      alias: database
+  variables:
+    POSTGRES_DB: app
+    POSTGRES_USER: app
+    POSTGRES_PASSWORD: app
+  script:
+    - php bin/console lexik:jwt:generate-keypair --skip-if-exists
+    - php bin/console doctrine:database:create --env=test --if-not-exists
+    - vendor/bin/phpunit --log-junit phpunit-report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: api/phpunit-report.xml
+
+# --- Front Angular ---------------------------------------------------------
+
+.front:
+  image: node:22
+  cache:
+    key:
+      files:
+        - front/package-lock.json
+    paths:
+      - front/.npm/
+  before_script:
+    - cd front
+    - npm ci --cache .npm --prefer-offline
+  rules:
+    - changes:
+        - front/**/*
+        - .gitlab-ci.yml
+
+front:test:
+  extends: .front
+  stage: test
+  script:
+    - npx ng test --watch=false
+
+front:build:
+  extends: .front
+  stage: build
+  script:
+    - npx ng build
+  artifacts:
+    paths:
+      - front/dist/
+    expire_in: 1 week

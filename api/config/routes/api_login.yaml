@@ -1,0 +1,4 @@
+# Route interceptée par le pare-feu « login » (json_login) : aucun contrôleur n'est appelé.
+api_login:
+    path: /api/login
+    methods: [POST]
