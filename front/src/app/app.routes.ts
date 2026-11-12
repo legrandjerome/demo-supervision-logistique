@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { anonymousGuard, authGuard, roleGuard } from './core/auth/auth.guards';
+import { anonymousGuard, authGuard, roleGuard } from '@demo/domain';
 
 export const routes: Routes = [
   {
@@ -17,6 +17,20 @@ export const routes: Routes = [
         pathMatch: 'full',
         loadComponent: () =>
           import('./features/dashboard/dashboard.page').then((m) => m.DashboardPage),
+      },
+      {
+        path: 'equipements',
+        loadComponent: () =>
+          import('./features/equipments/equipments.page').then((m) => m.EquipmentsPage),
+      },
+      {
+        path: 'missions',
+        loadComponent: () =>
+          import('./features/missions/missions.page').then((m) => m.MissionsPage),
+      },
+      {
+        path: 'alarmes',
+        loadComponent: () => import('./features/alarms/alarms.page').then((m) => m.AlarmsPage),
       },
       {
         path: 'utilisateurs',

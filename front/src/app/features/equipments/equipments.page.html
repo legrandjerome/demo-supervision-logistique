@@ -1,0 +1,111 @@
+<ui-page-header title="Équipements" />
+
+@if (store.error(); as message) {
+  <ui-error-banner [message]="message" />
+}
+
+<div class="filters">
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>État</mat-label>
+    <mat-select [value]="store.filter().status" (valueChange)="store.setFilter({ status: $event })">
+      <mat-option [value]="null">Tous</mat-option>
+      @for (status of statuses; track status) {
+        <mat-option [value]="status">{{ statusLabels[status] }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Type</mat-label>
+    <mat-select [value]="store.filter().type" (valueChange)="store.setFilter({ type: $event })">
+      <mat-option [value]="null">Tous</mat-option>
+      @for (type of types; track type) {
+        <mat-option [value]="type">{{ typeLabels[type] }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Zone</mat-label>
+    <mat-select [value]="store.filter().zone" (valueChange)="store.setFilter({ zone: $event })">
+      <mat-option [value]="null">Toutes</mat-option>
+      @for (zone of store.zones(); track zone) {
+        <mat-option [value]="zone">{{ zone }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <button matButton type="button" (click)="store.resetFilter()">Réinitialiser</button>
+  <span class="result-count">
+    {{ store.filtered().length }} sur {{ store.entities().length }}
+  </span>
+</div>
+
+<div class="table-container">
+  @if (store.isLoading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Chargement des équipements" />
+  }
+  <table mat-table [dataSource]="store.filtered()">
+    <ng-container matColumnDef="code">
+      <th mat-header-cell *matHeaderCellDef>Code</th>
+      <td mat-cell *matCellDef="let equipment" class="mono">{{ equipment.code }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="name">
+      <th mat-header-cell *matHeaderCellDef>Nom</th>
+      <td mat-cell *matCellDef="let equipment">{{ equipment.name }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="type">
+      <th mat-header-cell *matHeaderCellDef>Type</th>
+      <td mat-cell *matCellDef="let equipment">{{ typeLabelOf(equipment.type) }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="zone">
+      <th mat-header-cell *matHeaderCellDef>Zone</th>
+      <td mat-cell *matCellDef="let equipment">{{ equipment.zone }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="status">
+      <th mat-header-cell *matHeaderCellDef>État</th>
+      <td mat-cell *matCellDef="let equipment">
+        <ui-status-badge
+          [label]="statusLabelOf(equipment.status)"
+          [tone]="statusToneOf(equipment.status)"
+        />
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="statusChangedAt">
+      <th mat-header-cell *matHeaderCellDef>Depuis</th>
+      <td mat-cell *matCellDef="let equipment">{{ equipment.statusChangedAt | date: 'short' }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="actions">
+      <th mat-header-cell *matHeaderCellDef><span class="visually-hidden">Actions</span></th>
+      <td mat-cell *matCellDef="let equipment" class="actions">
+        <button matButton type="button" [matMenuTriggerFor]="statusMenu">Changer l’état</button>
+        <mat-menu #statusMenu="matMenu">
+          @for (status of statuses; track status) {
+            <button
+              mat-menu-item
+              type="button"
+              [disabled]="status === equipment.status"
+              (click)="changeStatus(equipment, status)"
+            >
+              {{ statusLabels[status] }}
+            </button>
+          }
+        </mat-menu>
+      </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="columns()"></tr>
+    <tr mat-row *matRowDef="let row; columns: columns()"></tr>
+    <tr class="mat-row" *matNoDataRow>
+      <td class="mat-cell empty" [attr.colspan]="columns().length">
+        {{ store.isLoading() ? 'Chargement…' : 'Aucun équipement ne correspond aux filtres.' }}
+      </td>
+    </tr>
+  </table>
+</div>

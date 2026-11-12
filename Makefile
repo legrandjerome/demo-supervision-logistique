@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help init up down migration migrate users test test-api test-front front
+.PHONY: help init up down migration migrate users seed test test-api test-front front
 
 COMPOSE := docker compose
 RUN     := $(COMPOSE) run --rm api
@@ -17,6 +17,7 @@ init: ## Première installation : image, dépendances, clés JWT, base, comptes 
 	@ls api/migrations/Version*.php >/dev/null 2>&1 || $(CONSOLE) doctrine:migrations:diff --no-interaction
 	$(CONSOLE) doctrine:migrations:migrate --no-interaction
 	$(CONSOLE) app:demo:create-users
+	$(CONSOLE) app:demo:seed
 	cd front && npm ci
 
 up: ## Démarre l'API et la base
@@ -33,6 +34,9 @@ migrate: ## Applique les migrations
 
 users: ## Crée les comptes de démonstration
 	$(CONSOLE) app:demo:create-users
+
+seed: ## Charge le jeu de données fictif (ajouter ARGS=--reset pour repartir de zéro)
+	$(CONSOLE) app:demo:seed $(ARGS)
 
 front: ## Lance le front sur http://localhost:4200 (proxy /api vers l'API)
 	cd front && npm start

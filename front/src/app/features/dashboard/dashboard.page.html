@@ -1,0 +1,40 @@
+<ui-page-header title="Tableau de bord" />
+
+@if (error(); as message) {
+  <ui-error-banner [message]="message" />
+}
+
+<section aria-labelledby="equipments-title">
+  <h2 id="equipments-title">Équipements ({{ equipments.entities().length }})</h2>
+  <div class="kpis">
+    @for (status of statuses; track status) {
+      <ui-kpi-card
+        [label]="statusLabels[status]"
+        [value]="equipments.countByStatus()[status]"
+        [tone]="statusTones[status]"
+      />
+    }
+  </div>
+</section>
+
+<section aria-labelledby="alarms-title">
+  <h2 id="alarms-title">Alarmes actives ({{ alarms.active().length }})</h2>
+  @if (latestAlarms().length) {
+    <ul class="alarms">
+      @for (alarm of latestAlarms(); track alarm.id) {
+        <li>
+          <ui-status-badge
+            [label]="severityLabels[alarm.severity]"
+            [tone]="severityTones[alarm.severity]"
+          />
+          <span class="code">{{ alarm.equipment.code }}</span>
+          <span class="message">{{ alarm.message }}</span>
+          <time [attr.datetime]="alarm.raisedAt">{{ alarm.raisedAt | date: 'short' }}</time>
+        </li>
+      }
+    </ul>
+    <a routerLink="/alarmes">Voir toutes les alarmes</a>
+  } @else {
+    <p class="muted">Aucune alarme active.</p>
+  }
+</section>

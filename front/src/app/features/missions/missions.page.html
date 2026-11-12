@@ -1,0 +1,102 @@
+<ui-page-header title="Missions de transport">
+  @if (canCreate()) {
+    <button matButton="filled" type="button" (click)="create()">Nouvelle mission</button>
+  }
+</ui-page-header>
+
+@if (store.error(); as message) {
+  <ui-error-banner [message]="message" />
+}
+
+<div class="filters">
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Rechercher</mat-label>
+    <input matInput type="search" [formControl]="search" placeholder="Référence ou unité" />
+  </mat-form-field>
+
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>État</mat-label>
+    <mat-select [value]="store.query().status" (valueChange)="store.setQuery({ status: $event })">
+      <mat-option [value]="null">Tous</mat-option>
+      @for (status of statuses; track status) {
+        <mat-option [value]="status">{{ statusLabels[status] }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <span class="result-count">{{ store.total() }} mission(s)</span>
+</div>
+
+<div class="table-container">
+  @if (store.isLoading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Chargement des missions" />
+  }
+  <table mat-table [dataSource]="store.entities()">
+    <ng-container matColumnDef="reference">
+      <th mat-header-cell *matHeaderCellDef>Référence</th>
+      <td mat-cell *matCellDef="let mission" class="mono">{{ mission.reference }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="loadUnit">
+      <th mat-header-cell *matHeaderCellDef>Unité logistique</th>
+      <td mat-cell *matCellDef="let mission" class="mono">{{ mission.loadUnit }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="route">
+      <th mat-header-cell *matHeaderCellDef>Trajet</th>
+      <td mat-cell *matCellDef="let mission" class="mono">
+        {{ mission.source }} → {{ mission.destination }}
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="priority">
+      <th mat-header-cell *matHeaderCellDef>Priorité</th>
+      <td mat-cell *matCellDef="let mission">{{ mission.priority }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="status">
+      <th mat-header-cell *matHeaderCellDef>État</th>
+      <td mat-cell *matCellDef="let mission">
+        <ui-status-badge
+          [label]="statusLabelOf(mission.status)"
+          [tone]="statusToneOf(mission.status)"
+        />
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="equipment">
+      <th mat-header-cell *matHeaderCellDef>Équipement</th>
+      <td mat-cell *matCellDef="let mission" class="mono">{{ mission.equipmentCode ?? '—' }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="createdAt">
+      <th mat-header-cell *matHeaderCellDef>Créée le</th>
+      <td mat-cell *matCellDef="let mission">{{ mission.createdAt | date: 'short' }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="actions">
+      <th mat-header-cell *matHeaderCellDef><span class="visually-hidden">Actions</span></th>
+      <td mat-cell *matCellDef="let mission" class="actions">
+        @if (isCancellable(mission)) {
+          <button matButton type="button" (click)="cancel(mission)">Annuler</button>
+        }
+      </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="columns()"></tr>
+    <tr mat-row *matRowDef="let row; columns: columns()"></tr>
+    <tr class="mat-row" *matNoDataRow>
+      <td class="mat-cell empty" [attr.colspan]="columns().length">
+        {{ store.isLoading() ? 'Chargement…' : 'Aucune mission ne correspond à la recherche.' }}
+      </td>
+    </tr>
+  </table>
+  <mat-paginator
+    [length]="store.total()"
+    [pageIndex]="store.query().page - 1"
+    [pageSize]="store.query().limit"
+    [pageSizeOptions]="[10, 20, 50]"
+    (page)="paginate($event)"
+    aria-label="Pagination des missions"
+  />
+</div>

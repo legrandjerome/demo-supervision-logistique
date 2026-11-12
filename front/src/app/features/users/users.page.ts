@@ -1,62 +1,66 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { UsersApi } from './users.api';
+import { MatTableModule } from '@angular/material/table';
+import { UsersApi } from '@demo/domain';
+import { ErrorBanner, PageHeader, StatusBadge } from '@demo/ui';
 
 @Component({
   selector: 'app-users-page',
+  imports: [MatTableModule, ErrorBanner, PageHeader, StatusBadge],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <h1>Utilisateurs</h1>
-    <section class="card">
-      @if (users.isLoading()) {
-        <p class="muted">Chargement…</p>
-      } @else if (users.error()) {
-        <p class="error" role="alert">Impossible de charger les utilisateurs.</p>
-      } @else {
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Nom</th>
-              <th scope="col">E-mail</th>
-              <th scope="col">Rôles effectifs</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (user of users.value(); track user.id) {
-              <tr>
-                <td>{{ user.displayName }}</td>
-                <td>{{ user.email }}</td>
-                <td>
-                  @for (role of user.roles; track role) {
-                    <span class="badge">{{ role }}</span>
-                  }
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      }
-    </section>
+    <ui-page-header title="Utilisateurs" />
+
+    @if (users.error()) {
+      <ui-error-banner message="Impossible de charger les utilisateurs." />
+    }
+
+    <div class="table-container">
+      <table mat-table [dataSource]="users.value()">
+        <ng-container matColumnDef="displayName">
+          <th mat-header-cell *matHeaderCellDef>Nom</th>
+          <td mat-cell *matCellDef="let user">{{ user.displayName }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="email">
+          <th mat-header-cell *matHeaderCellDef>E-mail</th>
+          <td mat-cell *matCellDef="let user">{{ user.email }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="roles">
+          <th mat-header-cell *matHeaderCellDef>Rôles effectifs</th>
+          <td mat-cell *matCellDef="let user">
+            <span class="roles">
+              @for (role of user.roles; track role) {
+                <ui-status-badge [label]="role" />
+              }
+            </span>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let row; columns: columns"></tr>
+        <tr class="mat-row" *matNoDataRow>
+          <td class="mat-cell empty" [attr.colspan]="columns.length">
+            {{ users.isLoading() ? 'Chargement…' : 'Aucun utilisateur.' }}
+          </td>
+        </tr>
+      </table>
+    </div>
   `,
+  styleUrl: '../list-page.scss',
   styles: `
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    th,
-    td {
-      text-align: left;
-      padding: 0.5rem 0.75rem;
-      border-bottom: 1px solid var(--border);
-    }
-    .badge + .badge {
-      margin-left: 0.375rem;
+    .roles {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.375rem;
     }
   `,
 })
 export class UsersPage {
   private readonly api = inject(UsersApi);
 
+  protected readonly columns = ['displayName', 'email', 'roles'];
   protected readonly users = rxResource({
     stream: () => this.api.list(),
     defaultValue: [],

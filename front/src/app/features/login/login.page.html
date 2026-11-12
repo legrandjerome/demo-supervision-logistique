@@ -1,25 +1,35 @@
 <main class="login">
-  <section class="card">
+  <section class="panel">
     <h1>Supervision logistique</h1>
     <p class="muted">Démo : entrepôt fictif, données inventées.</p>
 
+    @if (store.error(); as error) {
+      <ui-error-banner [message]="error" />
+    }
+
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-      <label for="email">Adresse e-mail</label>
-      <input id="email" type="email" formControlName="email" autocomplete="username" />
+      <mat-form-field>
+        <mat-label>Adresse e-mail</mat-label>
+        <input matInput type="email" formControlName="email" autocomplete="username" />
+        @if (form.controls.email.invalid) {
+          <mat-error>Saisissez une adresse e-mail valide.</mat-error>
+        }
+      </mat-form-field>
 
-      <label for="password">Mot de passe</label>
-      <input
-        id="password"
-        type="password"
-        formControlName="password"
-        autocomplete="current-password"
-      />
+      <mat-form-field>
+        <mat-label>Mot de passe</mat-label>
+        <input
+          matInput
+          type="password"
+          formControlName="password"
+          autocomplete="current-password"
+        />
+        @if (form.controls.password.invalid) {
+          <mat-error>Saisissez votre mot de passe.</mat-error>
+        }
+      </mat-form-field>
 
-      @if (store.error(); as error) {
-        <p class="error" role="alert">{{ error }}</p>
-      }
-
-      <button type="submit" class="primary" [disabled]="store.isLoading()">
+      <button matButton="filled" type="submit" [disabled]="store.isLoading()">
         {{ store.isLoading() ? 'Connexion…' : 'Se connecter' }}
       </button>
     </form>
@@ -28,7 +38,9 @@
       <p class="muted">Comptes de démonstration (mot de passe : <code>demo</code>)</p>
       <div class="demo-buttons">
         @for (account of demoAccounts; track account.email) {
-          <button type="button" (click)="fill(account.email)">{{ account.label }}</button>
+          <button matButton="outlined" type="button" (click)="fill(account.email)">
+            {{ account.label }}
+          </button>
         }
       </div>
     </div>

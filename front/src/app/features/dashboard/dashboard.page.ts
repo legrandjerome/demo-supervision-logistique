@@ -1,53 +1,41 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { AuthStore } from '../../core/auth/auth.store';
+import { DatePipe } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import {
+  ALARM_SEVERITY_LABELS,
+  AlarmStore,
+  EQUIPMENT_STATUS_LABELS,
+  EQUIPMENT_STATUSES,
+  EquipmentStore,
+} from '@demo/domain';
+import { ErrorBanner, KpiCard, PageHeader, StatusBadge } from '@demo/ui';
+import { ALARM_SEVERITY_TONES, EQUIPMENT_STATUS_TONES } from '../../shared/tones';
 
 @Component({
   selector: 'app-dashboard-page',
+  imports: [DatePipe, RouterLink, ErrorBanner, KpiCard, PageHeader, StatusBadge],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <h1>Tableau de bord</h1>
-    <section class="card">
-      <h2>Session</h2>
-      <dl>
-        <dt>Utilisateur</dt>
-        <dd>{{ store.user()?.displayName }} ({{ store.user()?.email }})</dd>
-        <dt>Rôles effectifs</dt>
-        <dd>
-          @for (role of store.roles(); track role) {
-            <span class="badge">{{ role }}</span>
-          }
-        </dd>
-      </dl>
-    </section>
-    <section class="card">
-      <h2>À venir</h2>
-      <p class="muted">
-        Jalon 2 : équipements, missions de transport et alarmes. Jalon 3 : temps réel (Mercure) et
-        vue D3 synchronisée avec les tableaux.
-      </p>
-    </section>
-  `,
-  styles: `
-    dl {
-      display: grid;
-      grid-template-columns: max-content 1fr;
-      gap: 0.5rem 1.5rem;
-      margin: 0;
-    }
-    dt {
-      font-weight: 600;
-    }
-    dd {
-      margin: 0;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.375rem;
-    }
-    .card + .card {
-      margin-top: 1rem;
-    }
-  `,
+  templateUrl: './dashboard.page.html',
+  styleUrl: './dashboard.page.scss',
 })
 export class DashboardPage {
-  protected readonly store = inject(AuthStore);
+  protected readonly equipments = inject(EquipmentStore);
+  protected readonly alarms = inject(AlarmStore);
+
+  protected readonly statuses = EQUIPMENT_STATUSES;
+  protected readonly statusLabels = EQUIPMENT_STATUS_LABELS;
+  protected readonly statusTones = EQUIPMENT_STATUS_TONES;
+  protected readonly severityLabels = ALARM_SEVERITY_LABELS;
+  protected readonly severityTones = ALARM_SEVERITY_TONES;
+
+  protected readonly error = computed(() => this.equipments.error() ?? this.alarms.error());
+
+  /** Les cinq alarmes actives les plus récentes. */
+  protected readonly latestAlarms = computed(() =>
+    [...this.alarms.active()].sort((a, b) => b.raisedAt.localeCompare(a.raisedAt)).slice(0, 5),
+  );
+
+  constructor() {
+    void this.equipments.load();
+  }
 }

@@ -1,0 +1,64 @@
+<ui-page-header title="Alarmes">
+  <mat-slide-toggle [checked]="store.activeOnly()" (change)="store.showActiveOnly($event.checked)">
+    Actives uniquement
+  </mat-slide-toggle>
+</ui-page-header>
+
+@if (store.error(); as message) {
+  <ui-error-banner [message]="message" />
+}
+
+<div class="table-container">
+  @if (store.isLoading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Chargement des alarmes" />
+  }
+  <table mat-table [dataSource]="store.visible()">
+    <ng-container matColumnDef="severity">
+      <th mat-header-cell *matHeaderCellDef>Gravité</th>
+      <td mat-cell *matCellDef="let alarm">
+        <ui-status-badge
+          [label]="severityLabelOf(alarm.severity)"
+          [tone]="severityToneOf(alarm.severity)"
+        />
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="equipment">
+      <th mat-header-cell *matHeaderCellDef>Équipement</th>
+      <td mat-cell *matCellDef="let alarm">
+        <span class="mono">{{ alarm.equipment.code }}</span> · {{ alarm.equipment.name }}
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="message">
+      <th mat-header-cell *matHeaderCellDef>Message</th>
+      <td mat-cell *matCellDef="let alarm">{{ alarm.message }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="raisedAt">
+      <th mat-header-cell *matHeaderCellDef>Levée le</th>
+      <td mat-cell *matCellDef="let alarm">{{ alarm.raisedAt | date: 'short' }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="acknowledgement">
+      <th mat-header-cell *matHeaderCellDef>Acquittement</th>
+      <td mat-cell *matCellDef="let alarm">
+        @if (alarm.acknowledgedAt) {
+          {{ alarm.acknowledgedBy }}, {{ alarm.acknowledgedAt | date: 'short' }}
+        } @else if (canAcknowledge()) {
+          <button matButton="outlined" type="button" (click)="acknowledge(alarm)">Acquitter</button>
+        } @else {
+          En attente
+        }
+      </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="columns"></tr>
+    <tr mat-row *matRowDef="let row; columns: columns"></tr>
+    <tr class="mat-row" *matNoDataRow>
+      <td class="mat-cell empty" [attr.colspan]="columns.length">
+        {{ store.isLoading() ? 'Chargement…' : 'Aucune alarme à afficher.' }}
+      </td>
+    </tr>
+  </table>
+</div>
