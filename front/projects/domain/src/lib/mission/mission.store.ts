@@ -11,11 +11,14 @@ import { Mission, MissionQuery, NewMission } from './mission.models';
 interface MissionState {
   query: MissionQuery;
   total: number;
+  /** Missions créées ailleurs depuis le dernier chargement, absentes de la page affichée. */
+  unseen: number;
 }
 
 const initialState: MissionState = {
   query: { page: 1, limit: 10, status: null, search: '' },
   total: 0,
+  unseen: 0,
 };
 
 export const MissionStore = signalStore(
@@ -42,7 +45,7 @@ export const MissionStore = signalStore(
               patchState(
                 store,
                 setAllEntities([...page.items]),
-                { total: page.total },
+                { total: page.total, unseen: 0 },
                 setLoaded(),
               ),
             ),
@@ -63,6 +66,24 @@ export const MissionStore = signalStore(
         patchState(store, (state) => ({
           query: { ...state.query, page: 1, ...patch },
         }));
+      },
+
+      /**
+       * Applique une mise à jour reçue en direct. Une mission affichée est remplacée sur place ;
+       * une mission inconnue est seulement comptée : insérer une ligne sous le curseur de
+       * l'utilisateur déplacerait ce qu'il est en train de lire.
+       */
+      applyRemote(mission: Mission): void {
+        if (store.entityMap()[mission.id]) {
+          patchState(store, setEntity(mission));
+        } else if (mission.status === 'CREATED') {
+          patchState(store, (state) => ({ unseen: state.unseen + 1 }));
+        }
+      },
+
+      /** Recharge la page courante, par exemple pour afficher les missions créées ailleurs. */
+      reload(): void {
+        load(store.query());
       },
 
       /** Crée une mission puis recharge la première page ; renvoie true en cas de succès. */

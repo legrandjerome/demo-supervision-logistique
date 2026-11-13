@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help init up down migration migrate users seed test test-api test-front front
+.PHONY: help init up down migration migrate users seed simulate simulate-stop test test-api test-front front
 
 COMPOSE := docker compose
 RUN     := $(COMPOSE) run --rm api
@@ -23,8 +23,8 @@ init: ## Première installation : image, dépendances, clés JWT, base, comptes 
 up: ## Démarre l'API et la base
 	$(COMPOSE) up -d --wait
 
-down: ## Arrête les conteneurs
-	$(COMPOSE) down
+down: ## Arrête les conteneurs, simulateur compris
+	$(COMPOSE) --profile simulation down
 
 migration: ## Génère une migration à partir des entités
 	$(CONSOLE) doctrine:migrations:diff
@@ -37,6 +37,12 @@ users: ## Crée les comptes de démonstration
 
 seed: ## Charge le jeu de données fictif (ajouter ARGS=--reset pour repartir de zéro)
 	$(CONSOLE) app:demo:seed $(ARGS)
+
+simulate: ## Démarre le simulateur d'entrepôt en tâche de fond
+	$(COMPOSE) --profile simulation up -d --force-recreate simulator
+
+simulate-stop: ## Arrête le simulateur
+	$(COMPOSE) --profile simulation stop simulator
 
 front: ## Lance le front sur http://localhost:4200 (proxy /api vers l'API)
 	cd front && npm start

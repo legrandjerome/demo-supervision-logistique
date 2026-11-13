@@ -8,6 +8,14 @@ framework:
     #esi: true
     #fragments: true
 
+    # Une erreur 4xx est une requête refusée, pas une panne : elle n'a pas sa place au niveau « error ».
+    exceptions:
+        Symfony\Component\HttpKernel\Exception\BadRequestHttpException: { log_level: notice }
+        Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException: { log_level: notice }
+        Symfony\Component\HttpKernel\Exception\NotFoundHttpException: { log_level: notice }
+        Symfony\Component\HttpKernel\Exception\ConflictHttpException: { log_level: notice }
+        Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException: { log_level: notice }
+
 when@test:
     framework:
         test: true

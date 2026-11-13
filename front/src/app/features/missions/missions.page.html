@@ -8,6 +8,13 @@
   <ui-error-banner [message]="message" />
 }
 
+@if (store.unseen(); as count) {
+  <div class="notice" role="status">
+    {{ count }} nouvelle(s) mission(s) depuis le dernier chargement.
+    <button matButton type="button" (click)="store.reload()">Afficher</button>
+  </div>
+}
+
 <div class="filters">
   <mat-form-field subscriptSizing="dynamic">
     <mat-label>Rechercher</mat-label>

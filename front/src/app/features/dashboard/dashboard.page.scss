@@ -47,3 +47,27 @@ time {
   font: var(--mat-sys-body-small);
   white-space: nowrap;
 }
+
+.charts {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 60rem) {
+  .charts {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chart {
+  padding: 1rem 1.25rem;
+  background: var(--mat-sys-surface-container-lowest);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 0.5rem;
+}
+
+h3 {
+  margin: 0 0 0.75rem;
+  font: var(--mat-sys-title-small);
+}

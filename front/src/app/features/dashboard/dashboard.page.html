@@ -17,6 +17,28 @@
   </div>
 </section>
 
+<section aria-labelledby="activity-title">
+  <h2 id="activity-title">
+    Activité des {{ activity.activity()?.windowInMinutes ?? 30 }} dernières minutes
+  </h2>
+  <div class="charts">
+    <div class="chart">
+      <h3>Missions closes par minute ({{ activity.closedInWindow() }})</h3>
+      <ui-stacked-columns
+        [data]="throughput()"
+        [series]="throughputSeries"
+        [labelEvery]="5"
+        categoryLabel="Minute"
+        label="Missions closes par minute, par issue"
+      />
+    </div>
+    <div class="chart">
+      <h3>Missions par état</h3>
+      <ui-bar-list [items]="missionsByStatus()" />
+    </div>
+  </div>
+</section>
+
 <section aria-labelledby="alarms-title">
   <h2 id="alarms-title">Alarmes actives ({{ alarms.active().length }})</h2>
   @if (latestAlarms().length) {

@@ -11,6 +11,7 @@ use App\Dto\PageView;
 use App\Entity\TransportMission;
 use App\Entity\User;
 use App\Exception\InvalidTransition;
+use App\Realtime\LiveUpdates;
 use App\Repository\TransportMissionRepository;
 use App\Service\MissionReferenceGenerator;
 use Doctrine\ORM\EntityManagerInterface;
@@ -34,6 +35,7 @@ final readonly class MissionController
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
         private MissionReferenceGenerator $references,
+        private LiveUpdates $liveUpdates,
     ) {
     }
 
@@ -66,6 +68,7 @@ final readonly class MissionController
         );
         $this->entityManager->persist($mission);
         $this->entityManager->flush();
+        $this->liveUpdates->missionChanged($mission);
 
         return new JsonResponse(MissionView::fromEntity($mission), Response::HTTP_CREATED);
     }
@@ -80,6 +83,7 @@ final readonly class MissionController
             throw new ConflictHttpException($exception->getMessage(), $exception);
         }
         $this->entityManager->flush();
+        $this->liveUpdates->missionChanged($mission);
 
         return new JsonResponse(MissionView::fromEntity($mission));
     }

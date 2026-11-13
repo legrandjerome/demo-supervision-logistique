@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { AlarmStore, AuthStore } from '@demo/domain';
+import { AlarmStore, AuthStore, RealtimeClient, RealtimeStatus, RealtimeSync } from '@demo/domain';
 
 @Component({
   selector: 'app-shell',
@@ -15,6 +15,7 @@ import { AlarmStore, AuthStore } from '@demo/domain';
         <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
           Tableau de bord
         </a>
+        <a routerLink="/plan" routerLinkActive="active">Plan</a>
         <a routerLink="/equipements" routerLinkActive="active">Équipements</a>
         <a routerLink="/missions" routerLinkActive="active">Missions</a>
         <a routerLink="/alarmes" routerLinkActive="active">
@@ -27,6 +28,9 @@ import { AlarmStore, AuthStore } from '@demo/domain';
           <a routerLink="/utilisateurs" routerLinkActive="active">Utilisateurs</a>
         }
       </nav>
+      <span class="live" [attr.data-status]="realtime.status()" role="status">
+        <span class="dot" aria-hidden="true"></span>{{ liveLabels[realtime.status()] }}
+      </span>
       <span class="user">{{ auth.user()?.displayName }}</span>
       <button matButton type="button" (click)="logout()">Se déconnecter</button>
     </mat-toolbar>
@@ -72,6 +76,26 @@ import { AlarmStore, AuthStore } from '@demo/domain';
       font: var(--mat-sys-label-small);
       text-align: center;
     }
+    .live {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      color: var(--mat-sys-on-surface-variant);
+      font: var(--mat-sys-label-medium);
+      white-space: nowrap;
+    }
+    .dot {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background: var(--mat-sys-outline);
+    }
+    .live[data-status='live'] .dot {
+      background: #2e7d32;
+    }
+    .live[data-status='connecting'] .dot {
+      background: #b26a00;
+    }
     .user {
       color: var(--mat-sys-on-surface-variant);
       font: var(--mat-sys-body-medium);
@@ -87,10 +111,22 @@ export class Shell {
   private readonly router = inject(Router);
   protected readonly auth = inject(AuthStore);
   protected readonly alarms = inject(AlarmStore);
+  protected readonly realtime = inject(RealtimeClient);
+  private readonly sync = inject(RealtimeSync);
+
+  protected readonly liveLabels: Readonly<Record<RealtimeStatus, string>> = {
+    live: 'En direct',
+    connecting: 'Connexion…',
+    offline: 'Hors ligne',
+  };
 
   constructor() {
     // Le compteur d'alarmes de la barre de navigation a besoin des alarmes dès l'ouverture.
     void this.alarms.load();
+
+    // Le flux temps réel vit le temps de la session : il s'arrête à la déconnexion.
+    this.sync.start();
+    inject(DestroyRef).onDestroy(() => this.sync.stop());
   }
 
   protected logout(): void {

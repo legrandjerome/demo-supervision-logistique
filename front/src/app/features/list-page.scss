@@ -43,3 +43,16 @@ table {
   color: var(--mat-sys-on-surface-variant);
   text-align: center;
 }
+
+.notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.25rem 0.5rem 0.25rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 0.5rem;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font: var(--mat-sys-body-medium);
+}

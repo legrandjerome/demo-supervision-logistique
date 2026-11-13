@@ -44,6 +44,11 @@ export const AlarmStore = signalStore(
       patchState(store, { activeOnly });
     },
 
+    /** Applique une mise à jour reçue en direct : nouvelle alarme ou acquittement par un collègue. */
+    applyRemote(alarm: Alarm): void {
+      patchState(store, setEntity(alarm));
+    },
+
     /** Acquitte une alarme ; renvoie true si l'API a accepté. */
     async acknowledge(id: number): Promise<boolean> {
       try {

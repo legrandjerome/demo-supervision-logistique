@@ -4,6 +4,12 @@ services:
     environment:
       SERVER_NAME: ":80"
       DATABASE_URL: "postgresql://app:app@database:5432/app?serverVersion=17&charset=utf8"
+      # L'API publie sur le hub par le réseau Docker ; le navigateur s'y abonne via le proxy du front.
+      MERCURE_URL: "http://mercure/.well-known/mercure"
+      # Identifiant public du hub : c'est l'audience (aud) des jetons, épinglée côté hub.
+      MERCURE_PUBLIC_URL: &mercure_public_url "http://localhost:3000/.well-known/mercure"
+      MERCURE_JWT_SECRET: &mercure_secret "!ChangeThisMercureHubJWTSecretKey!"
+      MERCURE_JWT_ISSUER: &mercure_issuer "https://demo-supervision.localhost"
     volumes:
       - ./api:/app
       - caddy_data:/data
@@ -13,6 +19,51 @@ services:
     depends_on:
       database:
         condition: service_healthy
+      mercure:
+        condition: service_started
+
+  # Hub Mercure 1.x : abonnés anonymes refusés. Un jeton n'est accepté que s'il est signé avec
+  # la clé partagée, émis par l'émetteur de confiance et destiné à ce hub.
+  mercure:
+    image: dunglas/mercure:v1
+    environment:
+      SERVER_NAME: ":80"
+      MERCURE_PUBLISHER_JWT_KEY: *mercure_secret
+      MERCURE_SUBSCRIBER_JWT_KEY: *mercure_secret
+      MERCURE_TRUSTED_ISSUERS: *mercure_issuer
+      # L'API joint le hub par le réseau Docker et le navigateur par le proxy du front : sans
+      # audience épinglée, le hub la déduirait de chaque requête et refuserait l'un des deux.
+      MERCURE_EXTRA_DIRECTIVES: |
+        resource_identifier http://localhost:3000/.well-known/mercure
+    volumes:
+      - mercure_data:/data
+      - mercure_config:/config
+    ports:
+      - "3000:80"
+
+  # Simulateur d'entrepôt, démarré à la demande : docker compose --profile simulation up -d
+  simulator:
+    build: ./api
+    profiles: ["simulation"]
+    command: ["php", "bin/console", "app:demo:simulate", "--interval=2"]
+    init: true
+    restart: unless-stopped
+    # L'image vérifie la santé du serveur web, que ce conteneur ne lance pas.
+    healthcheck:
+      disable: true
+    environment:
+      DATABASE_URL: "postgresql://app:app@database:5432/app?serverVersion=17&charset=utf8"
+      MERCURE_URL: "http://mercure/.well-known/mercure"
+      MERCURE_PUBLIC_URL: *mercure_public_url
+      MERCURE_JWT_SECRET: *mercure_secret
+      MERCURE_JWT_ISSUER: *mercure_issuer
+    volumes:
+      - ./api:/app
+    depends_on:
+      database:
+        condition: service_healthy
+      mercure:
+        condition: service_started
 
   database:
     image: postgres:17-alpine
@@ -32,3 +83,5 @@ volumes:
   database_data:
   caddy_data:
   caddy_config:
+  mercure_data:
+  mercure_config:

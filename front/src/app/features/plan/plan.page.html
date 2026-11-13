@@ -1,0 +1,121 @@
+<ui-page-header title="Plan de l’entrepôt">
+  @if (selectedEquipment(); as equipment) {
+    <span class="muted selection">Sélection : {{ equipment.code }} · {{ equipment.name }}</span>
+    <button matButton type="button" (click)="selection.clear()">Tout afficher</button>
+  }
+</ui-page-header>
+
+@if (error(); as message) {
+  <ui-error-banner [message]="message" />
+}
+
+<section class="panel plan" aria-label="Plan">
+  <app-warehouse-plan
+    [equipments]="equipments.entities()"
+    [missionCountByCode]="missionCountByCode()"
+    [selectedId]="selection.equipmentId()"
+    (selected)="selection.toggle($event.id)"
+  />
+</section>
+
+<div class="tables">
+  <section class="panel" aria-labelledby="plan-equipments">
+    <h2 id="plan-equipments">Équipements ({{ sortedEquipments().length }})</h2>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Code</th>
+          <th scope="col">État</th>
+          <th scope="col" class="number">Missions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (equipment of sortedEquipments(); track equipment.id) {
+          <tr [class.selected]="equipment.id === selection.equipmentId()">
+            <td>
+              <button
+                type="button"
+                class="row-button mono"
+                [attr.aria-pressed]="equipment.id === selection.equipmentId()"
+                [attr.aria-label]="'Sélectionner ' + equipment.code + ', ' + equipment.name"
+                (click)="selection.toggle(equipment.id)"
+              >
+                {{ equipment.code }}
+              </button>
+            </td>
+            <td>
+              <ui-status-badge
+                [label]="statusLabels[equipment.status]"
+                [tone]="statusTones[equipment.status]"
+              />
+            </td>
+            <td class="number">{{ missionCountByCode()[equipment.code] ?? 0 }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel" aria-labelledby="plan-missions">
+    <h2 id="plan-missions">Missions en cours ({{ visibleMissions().length }})</h2>
+    @if (visibleMissions().length) {
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Référence</th>
+            <th scope="col">Trajet</th>
+            <th scope="col">Équipement</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (mission of visibleMissions(); track mission.id) {
+            <tr>
+              <td class="mono">{{ mission.reference }}</td>
+              <td class="mono">{{ mission.source }} → {{ mission.destination }}</td>
+              <td class="mono">{{ mission.equipmentCode }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else {
+      <p class="muted">
+        Aucune mission en cours{{ selectedEquipment() ? ' sur cet équipement' : '' }}.
+      </p>
+    }
+  </section>
+
+  <section class="panel" aria-labelledby="plan-alarms">
+    <h2 id="plan-alarms">Alarmes actives ({{ visibleAlarms().length }})</h2>
+    @if (visibleAlarms().length) {
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Gravité</th>
+            <th scope="col">Équipement</th>
+            <th scope="col">Message</th>
+            <th scope="col">Levée à</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (alarm of visibleAlarms(); track alarm.id) {
+            <tr>
+              <td>
+                <ui-status-badge
+                  [label]="severityLabels[alarm.severity]"
+                  [tone]="severityTones[alarm.severity]"
+                />
+              </td>
+              <td class="mono">{{ alarm.equipment.code }}</td>
+              <td>{{ alarm.message }}</td>
+              <td>{{ alarm.raisedAt | date: 'HH:mm' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else {
+      <p class="muted">
+        Aucune alarme active{{ selectedEquipment() ? ' sur cet équipement' : '' }}.
+      </p>
+    }
+  </section>
+</div>

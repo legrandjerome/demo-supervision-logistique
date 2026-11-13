@@ -60,6 +60,11 @@ export const EquipmentStore = signalStore(
       patchState(store, { filter: noFilter });
     },
 
+    /** Applique une mise à jour reçue en direct. */
+    applyRemote(equipment: Equipment): void {
+      patchState(store, setEntity(equipment));
+    },
+
     /** Change l'état d'un équipement ; renvoie true si l'API a accepté. */
     async changeStatus(id: number, status: EquipmentStatus): Promise<boolean> {
       try {

@@ -8,6 +8,7 @@ use App\Dto\AlarmView;
 use App\Entity\Alarm;
 use App\Entity\User;
 use App\Exception\InvalidTransition;
+use App\Realtime\LiveUpdates;
 use App\Repository\AlarmRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
@@ -27,6 +28,7 @@ final readonly class AlarmController
         private AlarmRepository $alarms,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
+        private LiveUpdates $liveUpdates,
     ) {
     }
 
@@ -51,6 +53,7 @@ final readonly class AlarmController
             throw new ConflictHttpException($exception->getMessage(), $exception);
         }
         $this->entityManager->flush();
+        $this->liveUpdates->alarmChanged($alarm);
 
         return new JsonResponse(AlarmView::fromEntity($alarm));
     }

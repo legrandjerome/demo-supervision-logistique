@@ -87,6 +87,12 @@ class Equipment
         return $this->statusChangedAt;
     }
 
+    /** Un transstockeur ou une navette transporte des charges ; les autres équipements non. */
+    public function isCarrier(): bool
+    {
+        return \in_array($this->type, [EquipmentType::StackerCrane, EquipmentType::Shuttle], true);
+    }
+
     /** Change l'état ; la date ne bouge que si l'état change réellement. */
     public function changeStatus(EquipmentStatus $status, \DateTimeImmutable $now): void
     {

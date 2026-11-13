@@ -8,6 +8,7 @@ use App\Dto\EquipmentView;
 use App\Dto\Input\ChangeEquipmentStatusInput;
 use App\Entity\Equipment;
 use App\Entity\User;
+use App\Realtime\LiveUpdates;
 use App\Repository\EquipmentRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
@@ -26,6 +27,7 @@ final readonly class EquipmentController
         private EquipmentRepository $equipments,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
+        private LiveUpdates $liveUpdates,
     ) {
     }
 
@@ -46,6 +48,7 @@ final readonly class EquipmentController
     ): JsonResponse {
         $equipment->changeStatus($input->status, $this->clock->now());
         $this->entityManager->flush();
+        $this->liveUpdates->equipmentChanged($equipment);
 
         return new JsonResponse(EquipmentView::fromEntity($equipment));
     }
