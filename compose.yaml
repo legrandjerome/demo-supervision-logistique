@@ -1,6 +1,8 @@
 services:
   api:
-    build: ./api
+    build:
+      context: ./api
+      target: dev
     environment:
       SERVER_NAME: ":80"
       DATABASE_URL: "postgresql://app:app@database:5432/app?serverVersion=17&charset=utf8"
@@ -43,7 +45,9 @@ services:
 
   # Simulateur d'entrepôt, démarré à la demande : docker compose --profile simulation up -d
   simulator:
-    build: ./api
+    build:
+      context: ./api
+      target: dev
     profiles: ["simulation"]
     command: ["php", "bin/console", "app:demo:simulate", "--interval=2"]
     init: true

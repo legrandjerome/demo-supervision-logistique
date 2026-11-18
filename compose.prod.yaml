@@ -1,0 +1,131 @@
+# Production : démo publique sur un serveur, derrière un reverse proxy HTTPS.
+# Les images viennent du registre GitLab ; les secrets viennent du fichier .env du serveur
+# (voir docs/deploiement.md). Seul le service « web » écoute sur la machine, en local.
+name: demo-supervision
+
+x-api-environment: &api_environment
+  APP_ENV: prod
+  APP_SECRET: ${APP_SECRET:?}
+  DATABASE_URL: "postgresql://app:${POSTGRES_PASSWORD:?}@database:5432/app?serverVersion=17&charset=utf8"
+  JWT_PASSPHRASE: ${JWT_PASSPHRASE:?}
+  MERCURE_URL: "http://mercure/.well-known/mercure"
+  MERCURE_PUBLIC_URL: "https://${DEMO_HOST:?}/.well-known/mercure"
+  MERCURE_JWT_SECRET: ${MERCURE_JWT_SECRET:?}
+  MERCURE_JWT_ISSUER: "https://${DEMO_HOST:?}"
+
+x-api: &api
+  image: ${REGISTRY_IMAGE:?}/api:${IMAGE_TAG:-latest}
+  restart: unless-stopped
+  environment: *api_environment
+  volumes:
+    - jwt_keys:/app/config/jwt
+
+# Les tâches de fond n'exposent pas de serveur web : le contrôle de santé de l'image ne s'applique pas.
+x-no-healthcheck: &no_healthcheck
+  healthcheck:
+    disable: true
+
+services:
+  # Point d'entrée : fichiers du front, et relais vers l'API et le hub.
+  web:
+    image: ${REGISTRY_IMAGE:?}/front:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8090}:80"
+    depends_on:
+      - api
+      - mercure
+
+  api:
+    <<: *api
+    volumes:
+      - jwt_keys:/app/config/jwt
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      mercure:
+        condition: service_started
+
+  # Tâche unique, rejouée à chaque déploiement : clés JWT, migrations, comptes et données de démo.
+  # Chaque commande est sans effet si son travail est déjà fait.
+  init:
+    <<: [*api, *no_healthcheck]
+    restart: "no"
+    command:
+      - sh
+      - -ec
+      - |
+        php bin/console lexik:jwt:generate-keypair --skip-if-exists
+        php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+        php bin/console app:demo:create-users
+        php bin/console app:demo:seed
+    depends_on:
+      database:
+        condition: service_healthy
+
+  simulator:
+    <<: [*api, *no_healthcheck]
+    init: true
+    command: ["php", "bin/console", "app:demo:simulate", "--interval=2"]
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      mercure:
+        condition: service_started
+
+  # Remise à zéro quotidienne des données de démo, à 4 h (heure du conteneur, UTC).
+  reset:
+    <<: [*api, *no_healthcheck]
+    init: true
+    command:
+      - sh
+      - -ec
+      - |
+        while true; do
+          sleep "$$(( $$(date -d 'tomorrow 04:00' +%s) - $$(date +%s) ))"
+          php bin/console app:demo:seed --reset
+        done
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  mercure:
+    image: dunglas/mercure:v1
+    restart: unless-stopped
+    environment:
+      SERVER_NAME: ":80"
+      MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET:?}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET:?}
+      MERCURE_TRUSTED_ISSUERS: "https://${DEMO_HOST:?}"
+      # L'API joint le hub par le réseau Docker et le navigateur par le nom de domaine :
+      # l'audience des jetons est épinglée sur l'adresse publique.
+      MERCURE_EXTRA_DIRECTIVES: |
+        resource_identifier https://${DEMO_HOST:?}/.well-known/mercure
+    volumes:
+      - mercure_data:/data
+      - mercure_config:/config
+
+  database:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes:
+      - database_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  database_data:
+  jwt_keys:
+  caddy_data:
+  caddy_config:
+  mercure_data:
+  mercure_config:

@@ -191,6 +191,12 @@ make seed ARGS=--reset  # recharger le jeu de données fictif
 make simulate-stop      # arrêter le simulateur
 ```
 
+## Déploiement
+
+La démo publique tourne en Docker Compose (`compose.prod.yaml`) derrière un reverse proxy HTTPS.
+Le pipeline construit les images de production et un job manuel les déploie : voir
+[docs/deploiement.md](docs/deploiement.md).
+
 ## CI GitLab
 
 `.gitlab-ci.yml` lance, selon les dossiers modifiés :
@@ -198,3 +204,5 @@ make simulate-stop      # arrêter le simulateur
 - **API** : lint YAML et conteneur, validation du mapping Doctrine, PHPUnit avec un service
   PostgreSQL.
 - **Front** : tests Vitest (application et bibliothèques) puis build de production.
+- **Sur `main`** : construction des images de production (`api`, `front`), puis déploiement
+  manuel (`deploy:production`).

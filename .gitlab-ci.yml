@@ -2,6 +2,8 @@ stages:
   - lint
   - test
   - build
+  - release
+  - deploy
 
 workflow:
   rules:
@@ -89,3 +91,64 @@ front:build:
     paths:
       - front/dist/
     expire_in: 1 week
+
+# --- Images de production ---------------------------------------------------
+
+# Construit une image et la pousse dans le registre du projet, étiquetée par le commit et « latest ».
+.release:
+  stage: release
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - docker build $BUILD_ARGS --tag "$CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" --tag "$CI_REGISTRY_IMAGE/$IMAGE_NAME:latest" "$BUILD_CONTEXT"
+    - docker push "$CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    - docker push "$CI_REGISTRY_IMAGE/$IMAGE_NAME:latest"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+release:api:
+  extends: .release
+  variables:
+    IMAGE_NAME: api
+    BUILD_CONTEXT: api
+    BUILD_ARGS: "--target prod"
+
+release:front:
+  extends: .release
+  variables:
+    IMAGE_NAME: front
+    BUILD_CONTEXT: front
+    BUILD_ARGS: ""
+
+# --- Déploiement ------------------------------------------------------------
+
+# À lancer à la main depuis GitLab. Variables attendues (Settings > CI/CD > Variables) :
+# DEPLOY_HOST, DEPLOY_USER, DEPLOY_PATH, DEPLOY_SSH_KEY (type « File ») et DEPLOY_KNOWN_HOSTS.
+deploy:production:
+  stage: deploy
+  image: alpine:3
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+  environment:
+    name: production
+    url: https://demo-supervision.legrand-jerome.fr
+  variables:
+    REMOTE: "$DEPLOY_USER@$DEPLOY_HOST"
+  before_script:
+    - apk add --no-cache openssh-client
+    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    - echo "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+    - chmod 600 "$DEPLOY_SSH_KEY"
+  script:
+    - scp -i "$DEPLOY_SSH_KEY" compose.prod.yaml "$REMOTE:$DEPLOY_PATH/compose.yaml"
+    # Le jeton du job ne sert qu'à récupérer les images : il ne reste pas sur le serveur.
+    - echo "$CI_REGISTRY_PASSWORD" | ssh -i "$DEPLOY_SSH_KEY" "$REMOTE" "docker login -u '$CI_REGISTRY_USER' --password-stdin '$CI_REGISTRY'"
+    - ssh -i "$DEPLOY_SSH_KEY" "$REMOTE" "cd '$DEPLOY_PATH' && export REGISTRY_IMAGE='$CI_REGISTRY_IMAGE' IMAGE_TAG='$CI_COMMIT_SHORT_SHA' && docker compose pull --quiet && docker compose up --detach --remove-orphans && docker image prune --force && docker compose ps"
+  after_script:
+    - ssh -i "$DEPLOY_SSH_KEY" "$DEPLOY_USER@$DEPLOY_HOST" "docker logout '$CI_REGISTRY'" || true
